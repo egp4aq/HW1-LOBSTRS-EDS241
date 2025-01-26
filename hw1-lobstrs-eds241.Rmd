@@ -7,6 +7,8 @@ output:
     html_document:
       theme: flatly
     pdf_document: default
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -127,8 +129,8 @@ Create new `df` named `spiny_counts`
 ```{r}
 spiny_counts <- tidydata %>%
     group_by(site, year, transect) %>%
-    summarise(counts = n(), mean_size = mean(size_mm, na.rm = TRUE)) %>%
-    drop_na()
+    summarise(counts = sum(count, na.rm = TRUE),
+              mean_size = mean(size_mm, na.rm = TRUE))
 ```
 
 **e.** Create a new variable `mpa` with levels `MPA` and `non_MPA`. For our regression analysis create a numerical variable `treat` where MPA sites are coded `1` and non_MPA sites are coded `0`
@@ -141,8 +143,7 @@ spiny_counts <- spiny_counts %>%
     mutate(mpa = case_when(site %in% c("IVEE", "NAPL") ~ "MPA",
            .default = "non_MPA"),
            treat = case_when(mpa == "MPA" ~ 1,
-                             .default = 0)) %>%
-    ungroup()
+                             .default = 0))
 
 ```
 
@@ -180,7 +181,8 @@ spiny_counts %>%
     ggplot(aes(x = site, y = counts, color = site)) +
     geom_boxplot() +
     labs(x = "Reef site",
-         y = "Frequency")
+         y = "Lobster count",
+         title = "Distribution of lobster counts grouped by reef site")
 
 ```
 
@@ -190,7 +192,8 @@ spiny_counts %>%
     ggplot(aes(x = mpa, y = counts, color = mpa)) +
     geom_violin() +
     labs(x = "MPA Status",
-         y = "Frequency")
+         y = "Lobster count",
+         title = "Distribution of lobster counts grouped by MPA status")
 
 ```
 
@@ -200,7 +203,8 @@ spiny_counts %>%
     ggplot(aes(x = counts, y = year, fill = as.factor(year))) +
     geom_density_ridges() +
     labs(x = "Lobster counts",
-         y = "Frequency")
+         y = "Year",
+         title = "Distribution of lobster counts grouped by year")
 
 ```
 
@@ -210,7 +214,8 @@ tidydata %>%
     ggplot(aes(x = size_mm, fill = site)) +
     geom_histogram(position = "identity") +
     labs(x = "Lobster size (mm)",
-         y = "Frequency")
+         y = "Lobster count",
+         title = "Distribution of lobster size grouped by site")
     
 ```
 
@@ -219,7 +224,7 @@ tidydata %>%
 ```{r}
 # USE: gt_summary::tbl_summary()
 spiny_counts %>%
-    tbl_summary(by = treat,
+    tbl_summary(by = site,
                 statistic = all_continuous() ~ "{mean}")
 ```
 
@@ -235,7 +240,7 @@ Step 4: OLS regression- building intuition
 # NOTE: We will not evaluate/interpret model fit in this assignment (e.g., R-square)
 
 m1_ols <- lm(
-    counts ~ treat,
+    counts ~ site,
     data = spiny_counts
 )
 
@@ -281,7 +286,7 @@ Step 5: Fitting GLMs
 #HINT2: For the second glm() argument `family` use the following specification option `family = poisson(link = "log")`
 
 m2_pois <- glm(
-    counts ~ treat,
+    counts ~ site,
     family = poisson(link="log"),
     data = spiny_counts
 )
@@ -314,8 +319,10 @@ check_zeroinflation(m2_pois)
 
 # NOTE: The `glm.nb()` function does not require a `family` argument
 
-m3_nb <- 
-
+m3_nb <- glm.nb(
+    counts ~ site,
+    data = spiny_counts
+)
 ```
 
 ```{r}

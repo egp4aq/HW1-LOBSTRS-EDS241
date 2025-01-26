@@ -224,8 +224,9 @@ tidydata %>%
 ```{r}
 # USE: gt_summary::tbl_summary()
 spiny_counts %>%
-    tbl_summary(by = site,
-                statistic = all_continuous() ~ "{mean}")
+    dplyr::select(counts, mean_size, mpa) %>%
+    tbl_summary(by = mpa,
+                statistic = list(all_continuous() ~ "{mean}"))
 ```
 
 ------------------------------------------------------------------------
@@ -351,7 +352,7 @@ Step 6: Compare models
 
 ```{r}
 
-export_summs(# ADD MODELS
+export_summs(m1_ols, m2_pois, m3_nb,
              model.names = c("OLS","Poisson", "NB"),
              statistics = "none")
 
@@ -378,8 +379,11 @@ Step 7: Building intuition - fixed effects
 ff_counts <- spiny_counts %>% 
     mutate(year=as_factor(year))
     
-m5_fixedeffs <- lm(
-    log(counts+1) ~ treat*year,
+m5_fixedeffs <- glm.nb(
+    counts ~ 
+        treat +
+        year +
+        treat*year,
     data = ff_counts)
 
 summ(m5_fixedeffs, model.fit = FALSE)
@@ -407,7 +411,11 @@ The plot should have... - `year` on the x-axis - `counts` on the y-axis - `mpa` 
 # Hint 1: Group counts by `year` and `mpa` and calculate the `mean_count`
 # Hint 2: Convert variable `year` to a factor
 
-plot_counts <- 
+plot_counts <- ff_counts %>%
+    group_by(year, mpa) %>%
+    ggplot(aes(x = year, y = counts, color = mpa)) +
+    geom_point() +
+    geom_line()
 
 # plot_counts %>% ggplot() ...
 ```

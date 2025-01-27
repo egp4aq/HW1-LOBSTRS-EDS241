@@ -395,11 +395,18 @@ export_summs(m1_ols, m2_pois, m3_nb,
 
 ```
 
+When we compare all three models together, we see that they are quite similar. This indicates to us that the treatment effect is relatively robust. The p value for each model falls in the same range as the others. It makes sense, additionally, that the poisson and negative binomial values are more similar than the OLS values because they are scaled by the log.
+
 ------------------------------------------------------------------------
 
 Step 7: Building intuition - fixed effects
 
 **a.** Create new `df` with the `year` variable converted to a factor
+
+```{r}
+ff_counts <- spiny_counts %>% 
+    mutate(year=as_factor(year))
+```
 
 **b.** Run the following OLS model using `lm()`
 
@@ -407,24 +414,22 @@ Step 7: Building intuition - fixed effects
 -   Estimate fixed effects for `year`
 -   Include an interaction term between variables `treat` and `year`
 
+```{r}
+m5_fixedeffs <- lm(
+    log(counts+1) ~ treat*year,
+    data = ff_counts
+)
+
+summ(m5_fixedeffs, model.fit=FALSE)
+```
+
 **c.** Take a look at the regression output. Each coefficient provides a comparison or the difference in means for a specific sub-group in the data. Informally, describe the what the model has estimated at a conceptual level (NOTE: you do not have to interpret coefficients individually)
+
+On a conceptual level, this model has estimated the treatment effect, like we did before, but now this model also accounts for the year as it relates to the treatment effect.
 
 **d.** Explain why the main effect for treatment is negative? \*Does this result make sense?
 
-```{r}
-
-ff_counts <- spiny_counts %>% 
-    mutate(year=as_factor(year))
-    
-m5_fixedeffs <- glm.nb(
-    counts ~ 
-        treat +
-        year +
-        treat*year,
-    data = ff_counts)
-
-summ(m5_fixedeffs, model.fit = FALSE)
-```
+Because the main effect for treatment is negative, this means that the value of log(counts + 1) decreases as we move from nonMPA to MPA. I'm not sure of a scenario when this would occur.
 
 **e.** Look at the model predictions: Use the `interact_plot()` function from package `interactions` to plot mean predictions by year and treatment status.
 
@@ -440,6 +445,8 @@ interact_plot(m5_fixedeffs, pred = year, modx = treat,
 
 ```
 
+This plot show us that the log(counts+1) increases as we move from nonMPA to MPA. Additionally, it shows us that in 2012, the value was much lower. This could account for that decreasing value we saw above.
+
 **g.** Using `ggplot()` create a plot in same style as the previous `interaction plot`, but displaying the original scale of the outcome variable (lobster counts). This type of plot is commonly used to show how the treatment effect changes across discrete time points (i.e., panel data).
 
 The plot should have... - `year` on the x-axis - `counts` on the y-axis - `mpa` as the grouping variable
@@ -452,9 +459,12 @@ plot_counts <- ff_counts %>%
     group_by(year, mpa) %>%
     ggplot(aes(x = year, y = counts, color = mpa)) +
     geom_point() +
-    geom_line()
+    geom_line() +
+    labs(x = "Year",
+         y = "Counts")
 
 # plot_counts %>% ggplot() ...
+plot_counts
 ```
 
 ------------------------------------------------------------------------
@@ -463,14 +473,25 @@ Step 8: Reconsider causal identification assumptions
 
 a.  Discuss whether you think `spillover effects` are likely in this research context (see Glossary of terms; <https://docs.google.com/document/d/1RIudsVcYhWGpqC-Uftk9UTz3PIq6stVyEpT44EPNgpE/edit?usp=sharing>)
 
+    In this specific research scenario, spillover effects seem likely. This mostly here means slight migration on the lobsters part, because of how close together the sites are.
+
 b.  Explain why spillover is an issue for the identification of causal effects
 
+    Spillover keeps researchers from being able to identify causal effect between conditions. The glossary above puts it like this, "it reduces the difference between the control and treatment group means."
+
 c.  How does spillover relate to impact in this research setting?
+
+    If the lobsters in MPAs and nonMPAs are not 100% a part of that site, the results could be very influenced.
 
 d.  Discuss the following causal inference assumptions in the context of the MPA treatment effect estimator. Evaluate if each of the assumption are reasonable:
 
     1)  SUTVA: Stable Unit Treatment Value assumption
+
+        The first condition for SUTVA is that one unit's treatment does not affect another unit's outcome. As we just discussed with the probable spillover effect, we cannot assure this.
+
     2)  Excludability assumption
+
+        The excludability assumption requires that the only thing influencing the lobster count could be the MPA status. It is not possible to assure this fact here.
 
 ------------------------------------------------------------------------
 
